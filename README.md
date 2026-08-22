@@ -137,6 +137,8 @@ These tests do not call OpenAI or control Fakturama. Real integration requires a
 - There is no batch mode, rollback, resumability, or automatic recovery from a partially completed transaction.
 - Alternate currencies, addresses, tax structures, order-level charges, and document types are outside the supported scope.
 
+Acceptance results and current US/USD screenshots are in [`evidence/ACCEPTANCE.md`](evidence/ACCEPTANCE.md).
+
 ## If I had three more hours
 
 I would focus on preventing avoidable failures and duplicate documents. Before creating anything, the script would check whether the same purchase order had already been processed. If it found an existing Order or Invoice, it would stop and clearly report what already exists instead of creating another one.
