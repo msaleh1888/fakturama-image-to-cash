@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This is the configuration for the Logback logger.
+     It serves as a template file which is initially copied to the 
+     workspace. The path for the workspace is replaced by the application
+     while initializing the logger.
+-->
+<configuration debug="true">
+    <property name="LOG_PATH" value="${user.home}/.fakturama2/Logs" />
+
+    <statusListener class="ch.qos.logback.core.status.OnConsoleStatusListener"/>
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/Error.log</file>
+        <immediateFlush>true</immediateFlush>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- daily rollover -->
+            <fileNamePattern>${LOG_PATH}/Error.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- keep 30 days' worth of history -->
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyyMMdd HH:mm:ss.SSS} | %-5level | %marker | %msg%n</pattern>
+        </encoder>
+    </appender>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <logger name="com.sebulli.fakturama" level="ERROR"/>
+    <logger name="org.fakturama" level="ERROR"/>
+    <logger name="org.mariadb.jdbc" level="ERROR"/>
+    <logger name="org.mariadb.jdbc.impl" level="ERROR"/>
+    <logger name="liquibase" level="ERROR"/>
+    <logger name="org.apache.hc.client5.http" level="ERROR" />
+    
+    <root level="ERROR">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

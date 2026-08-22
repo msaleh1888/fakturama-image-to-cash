@@ -1,0 +1,6 @@
+openai==3.1.0
+pillow==12.3.0
+pydantic==2.13.4
+pywin32==312
+pywinauto==0.6.9
+python-dotenv==1.2.2
