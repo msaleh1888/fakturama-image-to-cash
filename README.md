@@ -1,47 +1,40 @@
 # Fakturama Image-to-Cash Automation
 
-This project converts one order image into validated structured data, creates a Fakturama Order, creates its linked Invoice, applies the source payment status, and verifies the saved records.
-
-The implementation targets the supplied happy-path order, Fakturama 2.2.0 with an English UI, and a disposable prepared workspace. It is intentionally a small synchronous Python CLI rather than a general desktop-automation framework.
-
-## Current status
-
-Image extraction, the `OrderData` contract, deterministic financial validation, reviewed-JSON loading, and the three-command CLI boundary are implemented. The Fakturama adapter currently exposes its final entry point but still raises `NotImplementedError`; desktop automation is not yet complete.
-
-Local status at this stage:
-
-- The local extraction, CLI, serialization, validation, and pure Fakturama-runtime tests pass.
-- Both synthetic order fixtures validate.
-- Fakturama master data for the acceptance fixture has been prepared in the disposable development workspace.
-
-This section must be updated after the final Fakturama acceptance run.
-
-## Repository structure
+This Windows CLI reads an order image, extracts it into validated structured data, creates a Fakturama Order and its linked Invoice, applies the payment state, and verifies the saved records.
 
 ```text
-main.py                         CLI and straight-line orchestration
-models.py                       Pydantic OrderData contract and validation
-extract.py                      one OpenAI image-extraction request
-fakturama.py                    Fakturama UI automation and verification
-samples/                        runnable images and reviewed JSON fixtures
-tests/                          local deterministic tests
-DESIGN.md                       assessment design document
-IMPLEMENTATION_ARCHITECTURE.md  final solution architecture
+order image
+  -> OpenAI structured extraction
+  -> OrderData validation
+  -> reviewed JSON
+  -> Fakturama Order
+  -> linked paid Invoice
+  -> UI and persistence verification
 ```
+
+The supported submission path targets Fakturama 2.2.0 with an English UI, USD, identical billing and delivery addresses, and the prepared master records included in this repository. All five supplied image fixtures have passed the complete `run` workflow.
+
+## How it works
+
+1. `extract.py` sends one image to the OpenAI Responses API and parses the structured response directly into `OrderData`.
+2. `models.py` rejects missing fields, invalid dates, inconsistent payment data, incorrect line calculations, and incorrect net/VAT/gross totals.
+3. `main.py` writes the validated order to reviewed JSON and creates a fresh copy of the prepared Fakturama workspace under `.runtime/fakturama`.
+4. `fakturama.py` launches Fakturama against that copy, selects the exact prepared Debtor and Products, creates the Order, and creates the Invoice only through the Order's follow-up action.
+5. Values are read back before Save. The saved Order, paid Invoice, receivers, totals, document state, and reciprocal link are verified through the UI and read-only persistence inspection.
+
+The checked-in workspace is never used as the live workspace, and runtime copies are retained for diagnosis.
 
 ## Requirements
 
-- Windows with a visible interactive desktop session
+- Windows with an unlocked, visible desktop session
 - Python 3.11 or newer
 - Fakturama 2.2.0 with the English UI
-- A disposable Fakturama workspace for automation
-- An OpenAI API key for `extract` and `run`; `automate` does not require one
+- Fakturama installed at `C:\Program Files\Fakturama2\Fakturama.exe`, or supplied with `--fakturama-executable`
+- An OpenAI API key for `extract` and `run`
 
-Never run the desktop automation against real accounting data. The application uses Fakturama's UI for writes and reads its persistence files only for verification.
+Never run this automation against real accounting data.
 
-## Installation
-
-Create and activate a virtual environment, then install the pinned dependencies:
+## Setup
 
 ```powershell
 python -m venv .venv
@@ -49,97 +42,107 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Create a local `.env` file in the repository root:
+Set the API key in the shell or a local `.env` file:
 
 ```dotenv
 OPENAI_API_KEY=your_api_key_here
-FAKTURAMA_EXECUTABLE=C:\Program Files\Fakturama2\Fakturama.exe
-FAKTURAMA_WORKSPACE=D:\path\to\disposable\fakturama_workspace
+```
+
+Optional local settings:
+
+```dotenv
 FAKTURAMA_DIAGNOSTICS_DIR=diagnostics
+FAKTURAMA_DETAILED_TRACE=false
 ```
 
-`OPENAI_API_KEY` is needed only for commands that process an image. The Fakturama executable and workspace variables are needed only for commands that automate Fakturama. `.env` and diagnostic output are local files and must not be committed.
+`.env`, outputs, diagnostics, and runtime workspaces are ignored by Git.
 
-Desktop-automation dependencies will be added to `requirements.txt` with the Fakturama implementation. At the current stage, the pinned requirements cover extraction and validation only.
-
-## Prepared Fakturama workspace
-
-The happy-path implementation assumes these exact master records already exist:
-
-- Debtor: Northstar Office GmbH, including the fixture billing and delivery addresses
-- Payment method: Bank Transfer
-- VAT: VAT 19%
-- Product: `CHR-ERG-01` / Ergonomic Desk Chair
-- Product: `MAT-DESK-02` / Anti-Fatigue Desk Mat
-
-Missing or ambiguous master data stops the submitted implementation. The full design for conditional master creation is described in [DESIGN.md](DESIGN.md), but those creation branches are outside the timeboxed implementation scope.
-
-## Commands
-
-Extract one image to validated reviewed JSON:
-
-```powershell
-python main.py extract samples\synthetic_order_01.png --output output\synthetic_order_01.json
-```
-
-Automate Fakturama from reviewed JSON without making an OpenAI request:
-
-```powershell
-python main.py automate samples\synthetic_order_01.expected.json
-```
-
-Extract an image, write its reviewed JSON, and automate the same validated order:
+## Run the complete workflow
 
 ```powershell
 python main.py run samples\synthetic_order_01.png --output output\synthetic_order_01.json
 ```
 
-At the current repository stage, `extract` works and the two Fakturama commands stop at the unimplemented desktop adapter.
-
-## Validation
-
-The extraction response is parsed directly into `OrderData`. Before JSON is written or Fakturama is touched, Python validation checks required fields, dates, ranges, payment consistency, every line net, and the source net, VAT, and gross totals using exact Decimal arithmetic.
-
-The first fixture must validate to:
-
-- net: EUR 570.00
-- VAT: EUR 108.30
-- gross: EUR 678.30
-
-Invalid or inconsistent source data exits nonzero and does not produce a reviewed JSON file or perform a desktop action.
-
-## Tests
-
-The default test suite is local and does not call OpenAI or control Fakturama:
+If Fakturama is installed elsewhere:
 
 ```powershell
-python -m unittest discover -s tests
+python main.py run samples\synthetic_order_01.png `
+  --output output\synthetic_order_01.json `
+  --fakturama-executable "D:\Apps\Fakturama2\Fakturama.exe"
 ```
 
-Real extraction and Fakturama acceptance runs are explicit integration checks because they require an API key or an interactive Windows application.
+A successful run prints the reviewed JSON path, isolated workspace path, and verified document numbers:
 
-## Safety and verification
+```text
+Validated order written to ...
+Using isolated Fakturama workspace: ...
+Verified Fakturama Order PO...
+Verified linked Invoice INV...
+```
 
-- The automation uses only the configured disposable workspace.
-- It does not write Fakturama database files directly.
-- Debtor and Product selection requires one exact prepared record.
-- UI values and totals are verified before Save.
-- The Invoice is created only through the saved Order's follow-up action.
-- If a Save result is unclear, UI and read-only persistence are inspected before any further financial action.
+## Other commands
 
-## Known limitations
+Extract and validate without opening Fakturama:
 
-- Only the supplied happy-path data shape is supported.
-- Required master records must already exist.
-- Only Fakturama 2.2.0 with the English UI is targeted.
-- The automation requires an unlocked visible Windows desktop.
-- There is no batch mode, resumable execution, rollback, or automatic recovery from a partially completed transaction.
-- Alternate currencies, tax structures, order-level charges, and other Fakturama document types are not supported.
+```powershell
+python main.py extract samples\synthetic_order_01.png --output output\synthetic_order_01.json
+```
 
-## Evidence
+Run Fakturama from reviewed JSON without an OpenAI request:
 
-The final submission will include a small set of annotated screenshots under `evidence/` showing the completed two-line Order, linked paid Invoice, and final document verification. Internal discovery screenshots, trial scripts, workspace databases, and backups are not submission artifacts.
+```powershell
+python main.py automate samples\synthetic_order_01.expected.json
+```
+
+`automate` accepts the same optional `--fakturama-executable` argument.
+
+## Included fixtures
+
+`samples/` contains five US/USD image and expected-JSON pairs. The prepared Fakturama workspace supplies:
+
+- Debtor: Northstar Office Inc., 100 Market Street, New York, United States
+- Billing and delivery: the same prepared address
+- Payment method: Bank Transfer
+- VAT: VAT 19%
+- Products: `CHR-ERG-01` and `MAT-DESK-02`
+
+Missing or ambiguous master data stops the run. The implementation does not create master records automatically.
+
+## Validation and tests
+
+Financial validation uses `Decimal` with two-decimal `ROUND_HALF_UP` rounding:
+
+```text
+line net = quantity * unit net * (1 - discount / 100)
+VAT      = sum of discounted line values * each line's VAT rate
+gross    = net + VAT
+```
+
+Run the deterministic suite:
+
+```powershell
+python -m compileall -q main.py models.py extract.py fakturama.py tests
+python -m unittest discover -s tests
+python -m pip check
+```
+
+These tests do not call OpenAI or control Fakturama. Real integration requires an API key and an interactive Windows desktop.
+
+## Limitations
+
+- One order is processed per invocation.
+- Only the prepared US/USD, same-address happy path is supported.
+- Required Debtor, payment method, VAT, and Products must already exist.
+- Only Fakturama 2.2.0 with an English UI is targeted.
+- There is no batch mode, rollback, resumability, or automatic recovery from a partially completed transaction.
+- Alternate currencies, addresses, tax structures, order-level charges, and document types are outside the supported scope.
 
 ## If I had three more hours
 
-I would first implement and rehearse the missing-master branches for Debtor, payment method, VAT, and Product while preserving the open Order. Next I would add interruption-safe identity checks around saved documents so a failed run could resume without creating duplicates. Finally, I would repeat the end-to-end flow from a freshly restored workspace, tighten any remaining brittle control locators, and capture the final annotated evidence from that repeatable run.
+I would focus on preventing avoidable failures and duplicate documents. Before creating anything, the script would check whether the same purchase order had already been processed. If it found an existing Order or Invoice, it would stop and clearly report what already exists instead of creating another one.
+
+I would also check that the required customer, payment method, VAT rate, and Products exist before opening the Order screen. If anything were missing or duplicated, the script would report every problem together before making changes.
+
+I would add automated tests for these checks and use the remaining time to run one acceptance test at a different Windows display scale. I would not attempt automatic creation of missing data or full continuation after a crash within three hours, because those changes require more time to implement and test safely.
+
+For the design rationale and tradeoffs, see [DESIGN.md](DESIGN.md). For the implemented component structure, see [IMPLEMENTATION_ARCHITECTURE.md](IMPLEMENTATION_ARCHITECTURE.md).

@@ -1,0 +1,10 @@
+.env
+.pytest_cache/
+__pycache__/
+*.py[cod]
+diagnostics/
+discovery_artifacts/
+output/
+.runtime/
+.venv/
+samples/fakturama_workspace/Backup/

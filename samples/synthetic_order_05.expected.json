@@ -1,0 +1,60 @@
+{
+  "external_reference": "WEB-2026-0902-E21",
+  "order_date": "2026-09-02",
+  "currency": "USD",
+  "debtor": {
+    "customer_id": "CUST-1007",
+    "company": "Northstar Office Inc.",
+    "alias": "NORTHSTAR-US",
+    "contact_first_name": "Marta",
+    "contact_last_name": "Klein",
+    "email": "marta.klein@example.com",
+    "phone": "+1 212 555 0142",
+    "billing_address": {
+      "name": "Northstar Office Inc.",
+      "street": "100 Market Street",
+      "postal_code": "10001",
+      "city": "New York",
+      "country": "United States"
+    },
+    "delivery_address": {
+      "name": "Northstar Office Inc.",
+      "street": "100 Market Street",
+      "postal_code": "10001",
+      "city": "New York",
+      "country": "United States"
+    }
+  },
+  "payment": {
+    "method": "Bank Transfer",
+    "status": "PAID",
+    "payment_date": "2026-09-04"
+  },
+  "items": [
+    {
+      "sku": "CHR-ERG-01",
+      "description": "Ergonomic Desk Chair",
+      "quantity": "1",
+      "unit": "pcs",
+      "unit_net": "499.97",
+      "discount_percent": "15",
+      "vat_percent": "19",
+      "source_line_net": "424.97"
+    },
+    {
+      "sku": "MAT-DESK-02",
+      "description": "Anti-Fatigue Desk Mat",
+      "quantity": "6",
+      "unit": "pcs",
+      "unit_net": "27.25",
+      "discount_percent": "0",
+      "vat_percent": "19",
+      "source_line_net": "163.50"
+    }
+  ],
+  "totals": {
+    "net": "588.47",
+    "vat": "111.81",
+    "gross": "700.28"
+  }
+}
